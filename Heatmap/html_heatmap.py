@@ -3,7 +3,12 @@ import numpy as np
 import math
 import webbrowser
 import os
+import sys
 import plotly.graph_objects as go
+
+# Adds the parent directory to the search path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from lidar_ML.bee_classifier import BeeClassifier
 
 # ===============================
@@ -126,7 +131,7 @@ def create_interactive_plot(bee_positions):
 # ===============================
 if __name__ == "__main__":
 
-    bees = process_file("./flower_setup/flower_events_02-01-2026_13.56.56.jsonl")
+    bees = process_file("../assets/flower_events_02-01-2026_13.56.56.jsonl")
 
     fig = create_interactive_plot(bees)
 

@@ -15,6 +15,9 @@ import socket
 import os
 import sys
 from datetime import datetime
+
+# Adds the parent directory to the search path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from communication_protocol import (
     Packet,
     PacketHeader,
@@ -22,10 +25,6 @@ from communication_protocol import (
     PACKET_ID_IMAGE_RESPONSE,
     PACKET_ID_LIDAR_RESPONSE,
 )
-    
-# Adds the parent directory to the search path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from heatmap.heatmap_generator import generate_heatmap_png
 
 # ============================================================

@@ -4,6 +4,12 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+import sys
+import os
+
+# Adds the parent directory to the search path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from lidar_ML.bee_classifier import BeeClassifier
 
 # ===============================
@@ -122,5 +128,5 @@ def show_map(bee_positions):
 # MAIN
 # ===============================
 if __name__ == "__main__":
-    bees = process_file("./flower_setup/flower_events_02-01-2026_13.56.56.jsonl")
+    bees = process_file("../assets/flower_events_02-01-2026_13.56.56.jsonl")
     show_map(bees)
