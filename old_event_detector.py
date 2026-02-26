@@ -47,7 +47,8 @@ def parse_scan(telegram):
 
 
 def main():
-    dataset_folder = "dataset"
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    dataset_folder = os.path.join(script_dir, "lidar_ML", "dataset")
     os.makedirs(dataset_folder, exist_ok=True)
 
     flower_state = {
@@ -169,8 +170,7 @@ def main():
 
         finally:
             s.sendall(CMD_STOP)
-            print(f"\nEvents saved to {out_file}")
-
+            print(f"Session complete. Events saved in {dataset_folder}")
 
 if __name__ == "__main__":
     main()
