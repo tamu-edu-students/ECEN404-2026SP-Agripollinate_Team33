@@ -1,38 +1,33 @@
 # bee_classifier.py
 
-import numpy as np
+import joblib
+from feature_extractor import extract_features
+
 
 class BeeClassifier:
-    """
-    Basic placeholder classifier.
-    Later you can load a trained ML model here.
-    """
 
-    def __init__(self):
-        # Later you can load model weights here
-        pass
+    def __init__(self, model_path):
 
-    def extract_features(self, event):
-        """
-        Convert raw event JSON into feature vector.
-        For now we compute simple stats.
-        """
-        distance_series = np.array(event["distance_series"])
-
-        mean_dist = np.mean(distance_series)
-        std_dist = np.std(distance_series)
-        duration = event["end_time"] - event["start_time"]
-        num_scans = event["num_scans"]
-
-        return np.array([mean_dist, std_dist, duration, num_scans])
+        # load trained model
+        self.model = joblib.load(model_path)
 
     def predict(self, event):
-        """
-        Return True if event is bee.
-        For now always True.
-        Replace with real ML later.
-        """
-        features = self.extract_features(event)
 
-        # Placeholder rule
-        return True
+        # extract features from event
+        features = extract_features(event)
+
+        # remove event_id and label
+        numeric_features = features[1:-1]
+
+        # model expects 2D input
+        prediction = self.model.predict([numeric_features])[0]
+        probability = self.model.predict_proba([numeric_features])[0]
+
+        bee_prob = probability[1]
+
+        if prediction == 1:
+            label = "bee"
+        else:
+            label = "not_bee"
+
+        return label, bee_prob
