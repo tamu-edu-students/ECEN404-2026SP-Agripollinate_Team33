@@ -228,7 +228,6 @@ class EventDetector:
                         bg = cfg["background_dist"]
                         event = {
                             "type": "end",
-                            "event_type": "flower_visit",
                             "event_id": event_id,
                             "flower_id": fid,
                             "background_dist": float(bg),
