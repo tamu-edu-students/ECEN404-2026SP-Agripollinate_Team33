@@ -47,7 +47,7 @@ LIDAR_DATA_SAVE_DIR = "/home/josiah/pi_program/lidar_data"
 TRIGGER_SCANS_TO_SAVE = 10  # Number of scans to save per trigger
 
 # Event Detection Configuration
-EVENT_DIST_THRESHOLD = 0.03  # Distance threshold for occupancy detection (meters)
+EVENT_DIST_THRESHOLD = 0.01  # Distance threshold for occupancy detection (meters)
 EVENT_START_CONFIRM_SCANS = 5
 EVENT_END_CONFIRM_SCANS = 5
 
@@ -55,7 +55,7 @@ EVENT_END_CONFIRM_SCANS = 5
 WATCHDOG_TIMEOUT = 5.0          # Maximum time between scans before watchdog alert (seconds)
 
 # Connection Timeout Configuration
-CONNECTION_TIMEOUT = 10.0       # Timeout for connection attempts before prompting user (seconds)
+CONNECTION_TIMEOUT = 60.0       # Timeout for connection attempts before prompting user (seconds)
 LIDAR_CLIENT_TIMEOUT = True  # Flag to enable/disable waiting for LiDAR client connection at startup
 
 
@@ -261,15 +261,17 @@ def _handle_event_end_async(event, lidar_data_server, lidar_data_client_enabled)
         
         # Prepare event data for transmission
         event_data = json.dumps({
-            "event_type": event.get("event_type", "flower_visit"),
+            "type": "end",
             "event_id": event_id,
             "flower_id": event["flower_id"],
+            "background_dist": event["background_dist"],
             "start_time": event["start_time"],
             "end_time": event["end_time"],
             "num_scans": event["num_scans"],
             "angles": event["angles"],
             "distance_series": event["distance_series"],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": event["timestamp"],
+            "label": None
         }).encode('utf-8')
         
         header = PacketHeader(event_id, PACKET_ID_LIDAR_OUTGOING)
