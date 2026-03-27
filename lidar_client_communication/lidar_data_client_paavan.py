@@ -214,19 +214,48 @@ def main():
     # Server configuration
     HOST = "10.250.76.217" # Rasp Pi : 192.168.1.74 (Home WIFI) : 10.250.76.217 (TAMU IoT)
     PORT = 12346 # Different port from image client
+
     download_dir = "lidar_downloads"
     camera_results = {}   # event_id -> camera info
+    pending_files = {}      # event_id -> lidar file path
 
     try:
         # Create TCP socket and connect to server
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_socket.connect((HOST, PORT))
+        client_socket.connect((HOST, PORT))\
+        
         print(f"Connected to LiDAR data server at {HOST}:{PORT}")
         print("Waiting for LiDAR scan data files... (Ctrl+C to quit)\n")
 
         receive_buffer = b""
-        pending_files = {}  # event_id -> json_file_path
 
+        # =====================================================
+        # HELPER: process event if both parts exist
+        # =====================================================
+        def try_process_event(event_id):
+            if event_id in pending_files and event_id in camera_results:
+
+                json_file_path = pending_files[event_id]
+                cam_data = camera_results[event_id]
+
+                response_packet = create_lidar_response_packet(
+                    event_id,
+                    json_file_path,
+                    cam_data
+                )
+
+                client_socket.sendall(response_packet.serialize())
+
+                print(f"[LIDAR CLIENT] Sent 2025 response for event {event_id}")
+                print("=" * 90 + "\n")
+
+                # cleanup
+                pending_files.pop(event_id, None)
+                camera_results.pop(event_id, None)
+
+        # =====================================================
+        # MAIN RECEIVE LOOP
+        # =====================================================
         while True:
             data = client_socket.recv(4096)
             if not data:
@@ -244,11 +273,20 @@ def main():
                 event_id = packet.header.event_id
 
                 # --------------------------------------------------
-                # 1025 FROM SERVER
+                # LIDAR PACKET (1025) FROM SERVER
                 # --------------------------------------------------
                 if packet_id == PACKET_ID_LIDAR_OUTGOING:
+
                     file_path = handle_lidar_packet(packet, download_dir)
+
+                    # guard against bad save
+                    if file_path is None:
+                        continue
+                
                     pending_files[event_id] = file_path
+
+                    # try processing (handles IMAGE → LIDAR case)
+                    try_process_event(event_id)
 
                 # --------------------------------------------------
                 # 2050 IMAGE RESPONSE
@@ -257,27 +295,12 @@ def main():
 
                     event_id, cam_result = handle_image_response_packet(packet)
 
+                    # guard against bad save
                     if cam_result is not None:
                         camera_results[event_id] = cam_result
 
-                    if event_id in pending_files:
-                        json_file_path = pending_files[event_id]
-
-                        response_packet = create_lidar_response_packet(
-                            event_id,
-                            json_file_path,
-                            camera_results.get(event_id)
-                        )
-
-                        client_socket.sendall(response_packet.serialize())
-
-                        print(f"[LIDAR CLIENT] Sent 2025 response for event {event_id}")
-                        print("=" * 90)
-                        print()
-
-                        del pending_files[event_id]
-                        if event_id in camera_results:
-                            del camera_results[event_id]
+                    # try processing (handles LIDAR → IMAGE case)
+                    try_process_event(event_id)
 
                 else:
                     print(f"[LIDAR CLIENT] Unknown packet ID: {packet_id}")
