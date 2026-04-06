@@ -164,38 +164,55 @@ def handle_image_response_packet(packet: Packet):
         event_id of the response
     """
     print(f"[LIDAR-IMAGE CLIENT] Received image response (2050) from image client")
-    # print(f"[LIDAR-IMAGE CLIENT] Event ID: {packet.header.event_id}")
+    POLLINATOR_CLASSES = {"bee", "butterfly", "ladybug"}
+    NON_POLLINATOR_CLASSES = {"beetle", "grasshopper"}
+    
     try:
         payload_str = packet.payload.decode("utf-8")
         lines = payload_str.strip().split("\n")
-
         results = []
 
         for line in lines:
             data = json.loads(line)
-
             detections = data.get("detections", [])
             total = data.get("total_detections", 0)
 
-            # check if any pollinator detected
             pollinator_detected = False
-            max_conf = 0.0
+            non_pollinator_detected = False
+            max_pollinator_conf = 0.0
+            max_non_pollinator_conf = 0.0
+
+            # track top class per category
+            top_pollinator_class = None
+            top_non_pollinator_class = None
 
             for det in detections:
                 class_name = det.get("class_name", "").lower()
                 confidence = det.get("confidence", 0)
-                
-                if class_name == "bee":
+
+                if class_name in POLLINATOR_CLASSES:
                     pollinator_detected = True
-                    if confidence > max_conf:
-                        max_conf = confidence
+                    if confidence > max_pollinator_conf:
+                        max_pollinator_conf = confidence
+                        top_pollinator_class = class_name
+                elif class_name in NON_POLLINATOR_CLASSES:
+                    non_pollinator_detected = True
+                    if confidence > max_non_pollinator_conf:
+                        max_non_pollinator_conf = confidence
+                        top_non_pollinator_class = class_name
 
-            print(f"[LIDAR-IMAGE CLIENT] Detections: {total} || Pollinator: {pollinator_detected} || Max Conf: {max_conf:.3f}")
-
+            print(f"[LIDAR-IMAGE CLIENT] Detections: {total} || "
+                  f"Pollinator: {pollinator_detected} (conf={max_pollinator_conf:.3f}) || "
+                  f"Non-Pollinator: {non_pollinator_detected} (conf={max_non_pollinator_conf:.3f})")
+            
             results.append({
                 "pollinator": pollinator_detected,
+                "non_pollinator": non_pollinator_detected,
                 "count": total,
-                "confidence": max_conf
+                "confidence": max_pollinator_conf,
+                "non_pollinator_confidence": max_non_pollinator_conf,
+                "top_pollinator_class": top_pollinator_class,       # e.g. "bee", "butterfly"
+                "top_non_pollinator_class": top_non_pollinator_class, # e.g. "beetle", "grasshopper"
             })
 
         return packet.header.event_id, results
@@ -214,24 +231,11 @@ def create_lidar_response_packet(event_id: str, json_file_path: str, camera_data
 
     print("[LIDAR CLIENT] Generating heatmap...")
 
-    # png_bytes = generate_heatmap_png(json_file_path, camera_data)
+    png_bytes, detection_json = generate_heatmap_png(json_file_path, camera_data, flower_id)
 
-    # if png_bytes is None:
-    #     print("[LIDAR CLIENT] No bees detected. Sending empty payload.")
-    #     png_bytes = b""
-
-    # header = PacketHeader(event_id, PACKET_ID_LIDAR_RESPONSE) # Response packet ID for LiDAR client
-    # packet = Packet(header, png_bytes) # Payload is the PNG image bytes
-
-    # print(f"[LIDAR CLIENT] Heatmap ready ({len(png_bytes)} bytes)")
-
-    result = generate_heatmap_png(json_file_path, camera_data, flower_id)
-    if result is None:
+    if png_bytes is None:
         print("[LIDAR CLIENT] No bees detected. Sending empty payload.")
         png_bytes = b""
-        detection_json = json.dumps({"pollinator_detected": False}).encode("utf-8")
-    else:
-        png_bytes, detection_json = result
     
     # Save the detection JSON locally
     detection_dir = "detection_results"
