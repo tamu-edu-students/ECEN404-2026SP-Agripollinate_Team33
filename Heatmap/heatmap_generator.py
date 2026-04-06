@@ -101,29 +101,51 @@ def process_file(filepath, camera_data=None, flower_id=None):
             # ======================================
             camera_conf = 0.0
             camera_is_bee = False
-
+            camera_is_non_pollinator = False
+            camera_non_pollinator_conf = 0.0
+            
             if camera_data:
                 cam = camera_data[0]
                 camera_conf = cam.get("confidence", 0.0)
                 camera_is_bee = cam.get("pollinator", False)
+                camera_is_non_pollinator = cam.get("non_pollinator", False)
+                camera_non_pollinator_conf = cam.get("non_pollinator_confidence", 0.0)
+                top_pollinator_class = cam.get("top_pollinator_class") or "pollinator"
+                top_non_pollinator_class = cam.get("top_non_pollinator_class") or "non_pollinator"
             
             # ======================================
             # LOG BOTH SOURCES
             # ======================================
             print(f"{str(event_id):<15} {str(flower_id):<15} {'LIDAR':<12} "
-                  f"{'pollinator' if lidar_is_bee else 'not_pollinator':<20} "
-                  f"{lidar_conf:.3f}            -")
+                f"{'pollinator' if lidar_is_bee else 'not_pollinator':<20} "
+                f"{lidar_conf:.3f}            -")
 
             if camera_data:
+                if camera_is_non_pollinator and camera_non_pollinator_conf >= camera_conf:
+                    cam_label = top_non_pollinator_class      # e.g. "beetle"
+                    cam_log_conf = camera_non_pollinator_conf
+                elif camera_is_bee:
+                    cam_label = top_pollinator_class          # e.g. "butterfly"
+                    cam_log_conf = camera_conf
+                else:
+                    cam_label = "no_detection"
+                    cam_log_conf = 0.0
+
                 print(f"{str(event_id):<15} {str(flower_id):<15} {'CAMERA':<12} "
-                      f"{'pollinator' if camera_is_bee else 'not_pollinator':<20} "
-                      f"{camera_conf:.3f}            -")
-                            
+                      f"{cam_label:<20} "
+                      f"{cam_log_conf:.3f}            -")
+                
             # ======================================
             # FUSION LOGIC
             # ======================================
             if use_camera:
-                if camera_conf >= lidar_conf:
+                # Camera confidently sees a non-pollinator and beats LiDAR → veto
+                if camera_is_non_pollinator and camera_non_pollinator_conf >= lidar_conf:
+                    is_bee = False
+                    source = "CAMERA"
+                    final_conf = camera_non_pollinator_conf
+                # Otherwise compare pollinator confidences as before
+                elif camera_conf >= lidar_conf:
                     is_bee = camera_is_bee
                     source = "CAMERA"
                     final_conf = camera_conf
@@ -200,14 +222,27 @@ def generate_heatmap_png(filepath, camera_data=None, flower_id=None):
             else:
                 flower_visit_counts[(x, y)] = 1
 
-    # if len(flower_visit_counts) == 0:
-    #     return None
     pollinator_detected = len(new_positions) > 0
     detection_json_bytes = json.dumps({"pollinator_detected": pollinator_detected}).encode("utf-8")
 
     if len(flower_visit_counts) == 0:
-        print("[HEATMAP] No flowers tracked yet — skipping heatmap generation.")
-        return None, detection_json_bytes
+        print("[HEATMAP] No visits yet — generating empty heatmap.")
+
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.set_title("Pollinator Activity Map\nNo visits detected")
+        ax.set_xlabel("Distance X (m)")
+        ax.set_ylabel("Distance Y (m)")
+
+        buffer = io.BytesIO()
+        fig.savefig(buffer, format="png", dpi=300)
+        plt.close(fig)
+
+        buffer.seek(0)
+        return buffer.read(), detection_json_bytes
+
+    # if len(flower_visit_counts) == 0:
+    #     print("[HEATMAP] No flowers tracked yet — skipping heatmap generation.")
+    #     return None, detection_json_bytes
     
     # ==========================================
     # BUILD PLOT DATA — FIXED: single unified loop
@@ -253,19 +288,37 @@ def generate_heatmap_png(filepath, camera_data=None, flower_id=None):
     ax.set_xlabel("Distance X (m)")
     ax.set_ylabel("Distance Y (m)")
 
-    # Build per-flower summary for title
-    flower_summary_lines = []
+    # Build heatmap summary
+    flower_summary_parts = []
+
     for key, data in flower_visit_counts.items():
         if isinstance(key, str):
-            flower_summary_lines.append(f"{key}: {data['count']}")
+            flower_summary_parts.append(f"{key} ({data['count']})")
         else:
-            flower_summary_lines.append(f"({key[0]:.2f}, {key[1]:.2f}): {data}")
- 
-    title_text = f"Pollinator Activity Map\nTotal Visits: {total_visits}"
-    if flower_summary_lines:
-        title_text += "\n\nVisits per Flower:\n" + "\n".join(flower_summary_lines)
- 
+            flower_summary_parts.append(f"({key[0]:.2f},{key[1]:.2f}) ({data})")
+
+    summary_line = " | ".join(flower_summary_parts)
+
+    # Final title
+    title_text = "Pollinator Activity Map"
+
+    if summary_line:
+        title_text += f"\nTotal Visits: {total_visits} {summary_line}"
+
     ax.set_title(title_text)
+
+    # flower_summary_lines = []
+    # for key, data in flower_visit_counts.items():
+    #     if isinstance(key, str):
+    #         flower_summary_lines.append(f"{key}: {data['count']}")
+    #     else:
+    #         flower_summary_lines.append(f"({key[0]:.2f}, {key[1]:.2f}): {data}")
+ 
+    # title_text = f"Pollinator Activity Map\nTotal Visits: {total_visits}"
+    # if flower_summary_lines:
+    #     title_text += "\n\nVisits per Flower:\n" + "\n".join(flower_summary_lines)
+ 
+    # ax.set_title(title_text)
     ax.set_aspect("equal", adjustable="box")
 
     padding = 0.2
