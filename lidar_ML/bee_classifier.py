@@ -7,7 +7,7 @@ import os
 from feature_extractor import extract_features
 
 class BeeClassifier:
-    def __init__(self, model_path, threshold=0.80):
+    def __init__(self, model_path, threshold=0.45):
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model not found at: {model_path}")
         # load trained model
