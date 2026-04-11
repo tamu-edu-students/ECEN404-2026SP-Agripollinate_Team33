@@ -4,9 +4,10 @@
 import os
 import json
 import statistics
+import matplotlib.pyplot as plt
 from collections import defaultdict
 
-DATASET_PATH = "test_dataset" # "new_labeled_dataset"
+DATASET_PATH = "deduped_dataset" # "new_labeled_dataset"
 
 # ============================================================
 # SESSION TARGETS — update these if your targets change
@@ -14,11 +15,13 @@ DATASET_PATH = "test_dataset" # "new_labeled_dataset"
 SESSION_TARGETS = {
     "A": ("bee",     1.0,  4.0, "fast drop + vibrate, 1-4s"),
     "B": ("bee",     4.0,  8.0, "fast drop + vibrate, 4-8s"),
-    "C": ("not_bee", 8.0, 15.0, "still hold, 8-15s"),
-    "D": ("not_bee",15.0, 25.0, "still hold, 15-25s"),
+    "C": ("bee",     4.0,  8.0, "drop + hold still, 2-5s"),
+    "D": ("bee",     4.0,  8.0, "drop + hold still, 5-8s"),
     "E": ("not_bee", 2.0,  6.0, "still hold SHORT, 2-6s"),
+    "F": ("not_bee", 8.0, 15.0, "still hold, 8-15s"),
+    "G": ("not_bee",15.0, 25.0, "still hold, 15-25s"),
 }
-SESSION_TARGET_COUNTS = {"A": 30, "B": 30, "C": 25, "D": 20, "E": 25}
+SESSION_TARGET_COUNTS = {"A": 60, "B": 40, "C": 25, "D": 20, "E": 50, "F": 40, "G": 20}
 
 
 # ============================================================
@@ -135,6 +138,90 @@ def assign_session(duration, label):
             return sess
     return "?"
 
+# ============================================================
+# SESSION VISUALIZATION (Improved)
+# ============================================================
+def plot_session_distribution(session_counts):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Patch
+
+    # 1. Data Preparation
+    sessions = sorted(SESSION_TARGETS.keys())
+    current = [session_counts[s] for s in sessions]
+    targets = [SESSION_TARGET_COUNTS[s] for s in sessions]
+    
+    labels  = [SESSION_TARGETS[s][0].upper() for s in sessions]
+    behaviors = [SESSION_TARGETS[s][3].replace(", ", "\n") for s in sessions]
+
+    # 2. Colors & Aesthetics
+    COLOR_BEE = "#FFC107"      # Golden Amber
+    COLOR_NOTBEE = "#009688"   # Modern Teal
+    COLOR_GOAL = "#ECEFF1"     # Soft Grey for the 'track'
+    
+    colors = [COLOR_BEE if SESSION_TARGETS[s][0] == "bee" else COLOR_NOTBEE for s in sessions]
+    
+    x = np.arange(len(sessions))
+    width = 0.6 
+
+    # 3. Create the Plot
+    fig, ax = plt.subplots(figsize=(11, 6.5)) # Slightly taller to accommodate padding
+    ax.set_facecolor("white")
+    
+    # Draw Background Bars (Target Goal)
+    ax.bar(x, targets, width, color=COLOR_GOAL, edgecolor="#CFD8DC", 
+           linewidth=1, label="Target Goal", zorder=2)
+    
+    # Draw Foreground Bars (Actual Progress)
+    actual_bars = ax.bar(x, current, width * 0.8, color=colors, edgecolor="black", 
+                         alpha=0.9, linewidth=1.2, label="Current Progress", zorder=3)
+
+    # 4. Add Text Annotations
+    for i, bar in enumerate(actual_bars):
+        have = current[i]
+        need = targets[i]
+        pct = (have / need * 100) if need > 0 else 0
+        
+        # Current count on top
+        ax.text(bar.get_x() + bar.get_width()/2, have + 0.5, 
+                f"{have}", ha='center', va='bottom', fontweight='bold', fontsize=11, zorder=4)
+        
+        # Percentage text moved slightly higher (-0.8 instead of -1.8)
+        ax.text(bar.get_x() + bar.get_width()/2, -0.8, 
+                f"{pct:.0f}%", ha='center', va='top', fontsize=10, 
+                fontweight='bold', color="#455A64")
+
+    # 5. Axes & Labels (Full Behavior Strings)
+    ax.set_xticks(x)
+    # Multi-line labels: Session ID -> Class -> Behavior
+    # We now use 'full_behaviors' which includes the timing like "1-4s"
+    xtick_labels = [f"Session {s}\n{l}\n({b})" for s, l, b in zip(sessions, labels, behaviors)]
+    ax.set_xticklabels(xtick_labels, fontsize=9.5, fontweight='medium')
+    
+    # CRITICAL: Increase pad to push the session labels down, away from the % text
+    ax.tick_params(axis='x', which='major', pad=15) 
+    
+    ax.set_title("Lidar Dataset: Session Collection Progress", fontsize=16, fontweight='bold', pad=25)
+    ax.set_ylabel("Number of Samples / Events", fontsize=12, labelpad=10)
+    
+    # 6. Styling
+    ax.yaxis.grid(True, linestyle='--', which='major', color='grey', alpha=0.2, zorder=0)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_color('#90A4AE')
+    ax.spines['bottom'].set_color('#90A4AE')
+
+    # 7. Legend
+    legend_elements = [
+        Patch(facecolor=COLOR_BEE, edgecolor='black', label='Bee Samples'),
+        Patch(facecolor=COLOR_NOTBEE, edgecolor='black', label='Not-Bee Samples'),
+        Patch(facecolor=COLOR_GOAL, edgecolor='#CFD8DC', label='Collection Goal')
+    ]
+    ax.legend(handles=legend_elements, loc='upper right', frameon=False, fontsize=10)
+
+    plt.tight_layout()
+    plt.savefig("dataset_report.png")
+    plt.show()
 
 # ============================================================
 # MAIN
@@ -372,6 +459,11 @@ def main():
 
     if not any_rec:
         print("  ✅ Dataset looks good! Run train_model.py and check cross-val F1.")
+    
+    # -------------------------------------------------------
+    # SESSION PLOT
+    # -------------------------------------------------------
+    plot_session_distribution(session_counts)
 
     print()
 
