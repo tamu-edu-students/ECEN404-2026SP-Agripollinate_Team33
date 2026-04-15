@@ -7,6 +7,8 @@ const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
 const FormData = require('form-data'); 
+const BatchCollector = require('./batchCollector');
+
 
 const app = express();
 app.use(cors());
@@ -18,8 +20,13 @@ const raspberryPiPort = process.env.RASPBERRY_PI_PORT || 12345;
 const httpPort = process.env.PORT || 3000;
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5000';
 const downloadDir = process.env.DOWNLOAD_DIR || path.join(__dirname, 'downloads');
+const PI_SERVER_URL = process.env.PI_SERVER_URL || 'http://localhost:8000';
+
 
 if (!fs.existsSync(downloadDir)) fs.mkdirSync(downloadDir);
+
+// Initialize batch collector
+const batchCollector = new BatchCollector(downloadDir);
 
 // Packet ID Constants
 const PACKET_ID_IMAGE_OUTGOING = 1050;
@@ -185,10 +192,6 @@ async function sendClassificationsToPi(eventId, detections) {
                     : "No insects detected",
                 timestamp: new Date().toISOString()
             });
-            
-            const jsonFilename = `classifications_${eventId}_${Date.now()}.json`;
-            const jsonPath = path.join(downloadDir, jsonFilename);
-            fs.writeFileSync(jsonPath, payload);
 
             const packet = new Packet(header, Buffer.from(payload, 'utf-8'));
             sendPacketToPi(packet);
@@ -208,10 +211,6 @@ async function sendClassificationsToPi(eventId, detections) {
             total_detections: validDetections.length,
             timestamp: new Date().toISOString()
         });
-
-        const jsonFilename = `classifications_${eventId}_${Date.now()}.json`;
-        const jsonPath = path.join(downloadDir, jsonFilename);
-        fs.writeFileSync(jsonPath, payload);
 
         const packet = new Packet(header, Buffer.from(payload, 'utf-8'));
         sendPacketToPi(packet);
@@ -304,10 +303,7 @@ async function handleImagePacket(packet) {
         const time = `${String(now.getHours()).padStart(2, '0')}.${String(now.getMinutes()).padStart(2, '0')}.${String(now.getSeconds()).padStart(2, '0')}.${String(now.getMilliseconds()).padStart(3, '0')}`;
         
         const filename = `received_${packet.header.event_id}_${date}_${time}.jpg`;
-        const file_path = path.join(downloadDir, filename);
-        
-        // Save original image
-        fs.writeFileSync(file_path, packet.payload);
+
         console.log(`[IMAGE] Received and saved: ${filename}, event_id: ${packet.header.event_id}`);
         
         // Automatically send to ML service for detection
@@ -324,6 +320,12 @@ async function handleImagePacket(packet) {
             if (detectionResult.annotated_filename) {
                 detectionCache.set(detectionResult.annotated_filename, detectionResult);
                 console.log(`[CACHE] Saved detection result: ${detectionResult.annotated_filename}.json`);
+            }
+
+            try {
+                batchCollector.add(packet.payload, packet.header.event_id, detectionResult.detections);
+            } catch (batchErr) {
+                console.error('[BATCH] Error during batch collection:', batchErr);
             }
             
             // Send classifications back to Raspberry Pi
@@ -522,6 +524,16 @@ app.post('/detect-image', async (req, res) => {
     }
 });
 
+// List all batches
+app.get('/api/batches', (req, res) => {
+    try {
+        const batches = batchCollector.list();
+        res.json({ success: true, batches });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // --- START SERVERS ---
 
 // Check ML service availability after delay
@@ -537,4 +549,73 @@ app.listen(httpPort, () => {
     console.log(`\n🚀 Express server running at http://localhost:${httpPort}`);
     console.log(`📁 Image files served from: ${downloadDir}`);
     console.log(`🤖 ML service expected at: ${ML_SERVICE_URL}\n`);
+});
+
+// Start main.py on the Pi
+app.post('/pi/start', async (req, res) => {
+    const { testing, autoConfig, skipLidarClient } = req.body;
+    try {
+        const response = await fetch(
+            `${PI_SERVER_URL}/start?testing=${testing}&auto_config=${autoConfig}&skip_lidar_client=${skipLidarClient}`,
+            { method: 'POST' }
+        );
+        const data = await response.json();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Stop main.py on the Pi
+app.post('/pi/stop', async (req, res) => {
+    try {
+        const response = await fetch(`${PI_SERVER_URL}/stop`, { method: 'POST' });
+        const data = await response.json();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Trigger a test event
+app.post('/pi/trigger', async (req, res) => {
+    try {
+        const response = await fetch(`${PI_SERVER_URL}/trigger-event`, { method: 'POST' });
+        const data = await response.json();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get Pi program status and logs
+app.get('/pi/status', async (req, res) => {
+    try {
+        const response = await fetch(`${PI_SERVER_URL}/status`);
+        const data = await response.json();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/pi/flower-pending', async (req, res) => {
+    try {
+        const response = await fetch(`${PI_SERVER_URL}/flower-pending`);
+        const data = await response.json();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/pi/flower-response', async (req, res) => {
+    const { include } = req.body;
+    try {
+        const response = await fetch(`${PI_SERVER_URL}/flower-response?include=${include}`, { method: 'POST' });
+        const data = await response.json();
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });

@@ -1,0 +1,18 @@
+import { useEffect } from "react";
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+
+export default function usePiControl() {
+  useEffect(() => {
+    // Just keep polling status, don't auto-start
+    const interval = setInterval(async () => {
+      try {
+        await fetch(`${BACKEND_URL}/pi/status`);
+      } catch (err) {
+        console.error("Pi status check failed:", err);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+}

@@ -13,7 +13,7 @@ function getHourFromFilename(filename) {
 function mapDetectionToLabels(det) {
   if (!det) return { species: "Unknown", role: "Unknown", confidence: 0 };
   const species = det.class_name || "Unknown";
-  const pollinators = new Set(["bee", "butterfly", "ladybug", "pollinator"]);
+  const pollinators = new Set(["bee","butterfly", "ladybug", "pollinator"]);
   const role = pollinators.has(species.toLowerCase()) ? "Pollinator" : "Pest";
   return { species, role, confidence: det.confidence ?? 0 };
 }
