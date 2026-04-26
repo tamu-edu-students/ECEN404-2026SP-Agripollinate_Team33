@@ -44,13 +44,13 @@ function mergeList(oldList, incoming = []) {
   const map = Object.fromEntries(oldList.map(i => [i.label, { ...i }]))
   incoming.forEach(it => {
     if (map[it.label]) {
-      // Increment value instead of replacing
-      map[it.label].value = (map[it.label].value || 0) + (it.value || 1)
+      map[it.label].value = (map[it.label].value || 0) + (it.value || 1);
+      if (it.lastLocation) map[it.label].lastLocation = it.lastLocation; // add this
     } else {
-      map[it.label] = { 
-        ...(it), 
+      map[it.label] = {
+        ...(it),
         color: it.color || makeColor(),
-        icon: it.icon || getIconForSpecies(it.label)  // Add this line
+        icon: it.icon || getIconForSpecies(it.label)
       }
     }
   });

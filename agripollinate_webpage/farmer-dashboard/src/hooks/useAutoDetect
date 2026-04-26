@@ -18,6 +18,12 @@ function mapDetectionToLabels(det) {
   return { species, role, confidence: det.confidence ?? 0 };
 }
 
+function getFlowerLocation(bbox) {
+  const [x1, , x2] = bbox;
+  const cx = (x1 + x2) / 2;
+  return cx > 320 ? "Flower 1 (Right)" : "Flower 2 (Left)";
+}
+
 export default function useAutoDetect(pollIntervalMs = 5000) {
   const seen = useRef(new Set());
 
@@ -46,15 +52,16 @@ export default function useAutoDetect(pollIntervalMs = 5000) {
           if (mapped.species === "Unknown") return;
 
           const key = `${mapped.role}:${mapped.species}`;
-          if (seenLabels.has(key)) return; // avoid duplicate count inside same image
+          if (seenLabels.has(key)) return;
           seenLabels.add(key);
 
-          activityStore.addActivity([{ hour, species: mapped.species }] );
+          activityStore.addActivity([{ hour, species: mapped.species }]);
 
           if (mapped.role === "Pollinator") {
             pollinators.push({ label: mapped.species, value: 1 });
           } else {
-            pests.push({ label: mapped.species, value: 1 });
+            const location = getFlowerLocation(det.bbox);  
+            pests.push({ label: mapped.species, value: 1, lastLocation: location });
           }
         });
 

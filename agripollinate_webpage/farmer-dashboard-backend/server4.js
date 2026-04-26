@@ -320,6 +320,10 @@ async function handleImagePacket(packet) {
         const detectionResult = await detectObjects(packet.payload, filename, packet.header.event_id);
         
         if (detectionResult && detectionResult.success) {
+            //Filter by confidence threshold first 
+            detectionResult.detections = detectionResult.detections.filter(det => det.confidence >= CONFIDENCE_THRESHOLD);
+            detectionResult.total_detections = detectionResult.detections.length;
+            
             console.log(`[ML] ✅ Detected ${detectionResult.total_detections} objects`);
             detectionResult.detections.forEach((det, idx) => {
                 console.log(`  ${idx + 1}. ${det.class_name} (${(det.confidence * 100).toFixed(1)}%)`);
@@ -338,7 +342,7 @@ async function handleImagePacket(packet) {
             }
             
             // Send classifications back to Raspberry Pi
-            await sendClassificationsToPi(packet.header.event_id, detectionResult.detections.filter(d => d.confidence >= CONFIDENCE_THRESHOLD));
+            await sendClassificationsToPi(packet.header.event_id, detectionResult.detections);
         } else {
             console.log(`[ML] ❌ Detection failed for ${filename}`);
             // Still send empty detections
@@ -365,6 +369,8 @@ function handleLidarResponse(packet) {
             fs.mkdirSync(downloadDir);
         }
 
+        const receiveTime = Date.now();
+
         const payload = packet.payload;
 
         // Check if payload has the new structured format (PNG len prefix + JSON)
@@ -388,7 +394,16 @@ function handleLidarResponse(packet) {
         const filename = `pollinator_activity_map_${packet.header.event_id}.png`;
         const file_path = path.join(downloadDir, filename);
         fs.writeFileSync(file_path, pngBytes);
+
         console.log(`[LIDAR] Saved: ${filename} (${pngBytes.length} bytes)`);
+
+        const postTime = Date.now();
+
+        console.log(`[LIDAR] Saved: ${filename} (${pngBytes.length} bytes)`);
+        console.log(`[LIDAR] Receive time: ${receiveTime % 100000} ms`);
+        console.log(`[LIDAR] Post time:    ${postTime % 100000} ms`);
+        console.log(`[LIDAR] Processing time: ${postTime - receiveTime} ms`);
+
 
         const isPNG = pngBytes[0] === 0x89 && pngBytes[1] === 0x50 &&
                       pngBytes[2] === 0x4E && pngBytes[3] === 0x47;
