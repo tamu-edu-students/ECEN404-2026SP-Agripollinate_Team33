@@ -1,0 +1,6 @@
+train: demo_insects_annotations/images/train
+val: demo_insects_annotations/images/val
+test: demo_test_set/images
+
+nc: 5  # number of classes (for now, 1 for "bee")
+names: ['bee', 'beetle', 'butterfly', 'grasshopper', 'ladybug']  # list of class names in order, matching your txt label indices
