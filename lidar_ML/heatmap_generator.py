@@ -7,7 +7,7 @@ import os
 import json 
 from datetime import datetime
 import matplotlib.pyplot as plt
-from lidar_ML.bee_classifier import BeeClassifier
+from bee_classifier import BeeClassifier
 
 ANGLE_START_DEG = 0.0
 ANGLE_INCREMENT_DEG = 0.5
@@ -16,9 +16,7 @@ ANGLE_INCREMENT_DEG = 0.5
 # INITIALIZE CLASSIFIER WITH PATH
 # ==========================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PARENT_DIR = os.path.dirname(BASE_DIR)
-
-MODEL_PATH = os.path.join(PARENT_DIR, 'lidar_ML', 'models', "bee_model4.pkl")
+MODEL_PATH = os.path.join(BASE_DIR, 'models', "bee_model4.pkl")
 
 # Instantiate the classifier
 classifier = BeeClassifier(MODEL_PATH)

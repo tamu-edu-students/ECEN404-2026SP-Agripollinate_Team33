@@ -28,6 +28,7 @@ sys.path.append(parent_dir)
 
 # Add the lidar_ML directory specifically so its internal imports (like feature_extractor) work
 sys.path.append(os.path.join(parent_dir, 'lidar_ML'))
+from heatmap_generator import generate_heatmap_png
 
 from communication_protocol import (
     Packet,
@@ -36,7 +37,7 @@ from communication_protocol import (
     PACKET_ID_IMAGE_RESPONSE,
     PACKET_ID_LIDAR_RESPONSE,
 )
-from heatmap.heatmap_generator import generate_heatmap_png
+
 
 
 # ============================================================
