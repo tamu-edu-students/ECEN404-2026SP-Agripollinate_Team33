@@ -63,7 +63,7 @@ Heatmap updated in real time
 
 ## Machine Learning Components
 
-### LiDAR Model (`lidar_ML/`)
+### LiDAR Model ([`lidar_ML/`](lidar_ML/))
 - **Algorithm:** Random Forest classifier
 - **Input:** Feature vectors extracted from LiDAR scan sequences
 - **Output:** `pollinator` / `non-pollinator` + confidence score
