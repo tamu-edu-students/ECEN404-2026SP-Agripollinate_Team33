@@ -1,4 +1,4 @@
-# ECEN 404 / ECEN 403 — Team 33 Pollination Monitoring System (AgriPollinate)
+# ECEN 404 / ECEN 403 - Team 33 Pollination Monitoring System (AgriPollinate)
 
 ## Overview
 
