@@ -45,9 +45,10 @@ Training and inference logic is implemented across:
 
 | File | Purpose |
 |------|---------|
+| [`bee_classifier.py`](bee_classifier.py) | Core inference logic |
 | [`train_model.py`](train_model.py) | Train and save the classifier |
 | [`test_model.py`](test_model.py) | Evaluate model performance |
-| [`bee_classifier.py`](bee_classifier.py) | Core inference logic |
+| [`heatmap_generator.py`](heatmap_generator.py) | Core heatmap generation logic|
 
 ---
 
