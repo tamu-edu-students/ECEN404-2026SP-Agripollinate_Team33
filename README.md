@@ -28,7 +28,7 @@ The system is composed of multiple integrated subsystems working together in an 
 ## Data Flow
 
 ```
-LiDAR detects motion near flower
+LiDAR detects motion near the flower
           ↓
 Event generated with flower ID + timestamp
           ↓
@@ -107,9 +107,9 @@ LiDAR event data is stored in `lidar_ML/dataset/`. Image data is managed within 
 
 All subsystems communicate using a structured packet format defined in [`communication_protocol.py`](communication_protocol.py). Key packet types include:
 
-- `PACKET_ID_LIDAR_OUTGOING` — LiDAR event data from the sensor
-- `PACKET_ID_IMAGE_RESPONSE` — Image classification result from the camera subsystem
-- `PACKET_ID_LIDAR_RESPONSE` — LiDAR ML classification result
+- `PACKET_ID_LIDAR_OUTGOING` - LiDAR event data from the sensor
+- `PACKET_ID_IMAGE_RESPONSE` - Image classification result from the camera subsystem
+- `PACKET_ID_LIDAR_RESPONSE` - LiDAR ML classification result
 
 ---
 
@@ -171,7 +171,7 @@ ECEN404_403_Team_33_Pollination_Monitoring-Internal/
 
 ## Team
 
-ECEN 403 / ECEN 404 — Team 33
+ECEN 403 / ECEN 404 - Team 33
 SICKSense PathFinder AgriPollinate
 - [`Paavan Bagla`](https://github.com/PaavanBagla)
 - [`Josiah Faircloth`](https://github.com/Josiahtate-tamu)
