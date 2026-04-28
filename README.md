@@ -69,7 +69,7 @@ Heatmap updated in real time
 - **Output:** `pollinator` / `non-pollinator` + confidence score
 - **Performance:** ~92% cross-validation F1 score
 
-### Image Model (`image_ML/`)
+### Image Model ([`image_ML/`](image_ML/))
 - **Algorithm:** YOLOv8 object detection
 - **Input:** Camera frames triggered by LiDAR events
 - **Output:** Bounding box + insect class label
